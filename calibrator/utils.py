@@ -135,3 +135,20 @@ def sample_robot_surface_points(
         ), invert=True
     )
     return pcd
+
+def create_motion_lines(prev_pts, curr_pts, return_pcd=False):
+    assert(prev_pts.shape == curr_pts.shape)
+    prev_pcd = o3d.geometry.PointCloud()
+    prev_pcd.points = o3d.utility.Vector3dVector(prev_pts)
+    prev_pcd.paint_uniform_color([0, 0, 1])
+
+    curr_pcd = o3d.geometry.PointCloud()
+    curr_pcd.points = o3d.utility.Vector3dVector(curr_pts)
+    curr_pcd.paint_uniform_color([1, 0, 0])
+
+    pcd_correspondence = [[i, i] for i in range(curr_pts.shape[0])]
+    line_set = o3d.geometry.LineSet.create_from_point_cloud_correspondences(prev_pcd, curr_pcd, pcd_correspondence)
+    if return_pcd:
+        return prev_pcd, curr_pcd, line_set
+    else:
+        return line_set
