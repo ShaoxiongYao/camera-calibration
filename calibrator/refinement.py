@@ -7,7 +7,7 @@ import sklearn.neighbors
 import torch
 from typing import List, Tuple
 
-from .utils import get_device
+from .utils import get_device, create_motion_lines
 
 
 
@@ -17,6 +17,7 @@ def pcd_registration_loss(
     predicted_transform: pp.se3,
     distance_threshold: float = 0.02,
     device: torch.device = torch.device('cpu'),
+    visualize_correspondences: bool = False
 ) -> torch.Tensor:
     """
     Compute point-to-point distance between source_pcd and target_pcd
@@ -27,6 +28,7 @@ def pcd_registration_loss(
     :param predicted_transform: Predicted SE(3)
     :param distance_threshold: Distance threshold for correspondences.
     :param device: Device to use for computation.
+    :param visualize_correspondences: Whether to visualize correspondences.
     :return: Loss value.
     """
     
@@ -42,6 +44,14 @@ def pcd_registration_loss(
     idx = idx.reshape(-1)
 
     to_keep = np.where(dist < distance_threshold)[0]
+
+    if visualize_correspondences:
+        src_pts = source_points[to_keep].detach().cpu().numpy()
+        tgt_pts = target_points[idx[to_keep]].detach().cpu().numpy()
+        pcd1, pcd2, lines = create_motion_lines(src_pts, 
+                                                tgt_pts, return_pcd=True)
+        o3d.visualization.draw_geometries([pcd1, pcd2, lines])
+
     return torch.mean(torch.linalg.norm(
         source_points[to_keep] - 
         target_points[idx[to_keep]], 
