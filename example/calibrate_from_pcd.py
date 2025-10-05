@@ -18,6 +18,8 @@ robot2camera = np.array(
  [0.0, 0.0, 0.0, 1.0]]
 )
 
+robot2camera = np.linalg.inv(np.load('initial_transform2.npy'))
+
 # Kinect
 # robot2camera = np.array(
 # [[-9.99973584e-01, -7.25495077e-03, -4.44568382e-04, -5.65225358e-01],
@@ -31,40 +33,42 @@ camera2robot = np.linalg.inv(robot2camera)
 voxel_size = 0.003
 
 if __name__ == "__main__":
-    data_dir = "data"
+    data_dir = "data/test1001"
 
     # third-view camera
-    index = glob.glob(f"{data_dir}/pcd_camera_*.ply")
+    index = glob.glob(f"{data_dir}/pcd_camera2_*.ply")
     index = max([int(i.split('_')[-1].split('.')[0]) for i in index])+1 if index else 0
 
     pc_camera = []
     pc_robot = []
     for i in range(index):
-        cam = o3d.io.read_point_cloud(f"{data_dir}/pcd_camera_{i:0>3}.ply")
+        cam = o3d.io.read_point_cloud(f"{data_dir}/pcd_camera2_{i:0>3}.ply")
         robot = o3d.io.read_point_cloud(f"{data_dir}/pcd_robot_{i:0>3}.ply")
 
         robot_in_cam = deepcopy(robot).transform(robot2camera)
-        bbox = robot_in_cam.get_axis_aligned_bounding_box()
-        padding = 0.05
-        bbox = o3d.geometry.AxisAlignedBoundingBox(
-            min_bound=[bbox.min_bound[0]-padding, bbox.min_bound[1]-padding, bbox.min_bound[2]-padding],
-            max_bound=[bbox.max_bound[0]+padding, bbox.max_bound[1]+padding, bbox.max_bound[2]+padding]
-        )
+        # bbox = robot_in_cam.get_axis_aligned_bounding_box()
+        # padding = 0.05
+        # bbox = o3d.geometry.AxisAlignedBoundingBox(
+        #     min_bound=[bbox.min_bound[0]-padding, bbox.min_bound[1]-padding, bbox.min_bound[2]-padding],
+        #     max_bound=[bbox.max_bound[0]+padding, bbox.max_bound[1]+padding, bbox.max_bound[2]+padding]
+        # )
+        
+        o3d.visualization.draw_geometries([cam, robot_in_cam])
 
-        # use bbox to crop the point cloud
-        cam = cam.crop(bbox)
+        # # use bbox to crop the point cloud
+        # cam = cam.crop(bbox)
 
-        cam = cam.voxel_down_sample(voxel_size=voxel_size)
-        robot = robot.voxel_down_sample(voxel_size=voxel_size)
+        # cam = cam.voxel_down_sample(voxel_size=voxel_size)
+        # robot = robot.voxel_down_sample(voxel_size=voxel_size)
 
-        # select points close enough to the robot
-        import sklearn.neighbors
-        knn = sklearn.neighbors.NearestNeighbors(n_neighbors=1, algorithm='auto')
-        knn.fit(np.asarray(robot_in_cam.points))
-        dist, idx = knn.kneighbors(np.asarray(cam.points))
-        idx = idx.reshape(-1)
-        to_keep = np.where(dist < 0.05)[0]
-        cam = cam.select_by_index(to_keep)
+        # # select points close enough to the robot
+        # import sklearn.neighbors
+        # knn = sklearn.neighbors.NearestNeighbors(n_neighbors=1, algorithm='auto')
+        # knn.fit(np.asarray(robot_in_cam.points))
+        # dist, idx = knn.kneighbors(np.asarray(cam.points))
+        # idx = idx.reshape(-1)
+        # to_keep = np.where(dist < 0.05)[0]
+        # cam = cam.select_by_index(to_keep)
 
         pc_camera.append(cam)
         pc_robot.append(robot)
@@ -73,7 +77,7 @@ if __name__ == "__main__":
         source_pcds=pc_camera,
         target_pcds=pc_robot,
         initial_transform=camera2robot,
-        distance_threshold=0.05,
+        distance_threshold=0.10,
         max_iter=100,
         stop_threshold=0.001,
     )
